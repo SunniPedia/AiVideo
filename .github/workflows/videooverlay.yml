@@ -1,0 +1,55 @@
+name: Build 4K Overlay
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-4k:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Build 4K video
+        run: |
+          mkdir -p output
+          
+          # Check inputs
+          ls -lh src/background.mp4
+          ls -lh src/logo.jpg
+
+          # src/background.mp4 + src/logo.jpg (your banner) -> output/output.mp4 (4K)
+          # Background upscale to 4K 3840x2160, Logo overlay bottom center
+          
+          ffmpeg -y \
+            -i src/background.mp4 \
+            -i src/logo.jpg \
+            -filter_complex "\
+              [0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,setsar=1,format=rgba[bg]; \
+              [1:v]scale=3200:-1:flags=lanczos,format=rgba[ov]; \
+              [bg][ov]overlay=(W-w)/2:H-h-80:format=auto,format=yuv420p:alpha=0,setsar=1[out] \
+            " \
+            -map "[out]" \
+            -map 0:a? \
+            -c:v libx264 -crf 18 -preset slow -profile:v high -pix_fmt yuv420p -movflags +faststart \
+            -c:a aac -b:a 192k -r 30 \
+            output/output.mp4
+
+          ls -lh output/output.mp4
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height,bit_rate -of default=noprint_wrappers=1 output/output.mp4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}-4k
+          name: "4K Build ${{ github.run_number }}"
+          files: output/output.mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
