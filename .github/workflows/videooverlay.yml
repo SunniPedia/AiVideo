@@ -24,11 +24,11 @@ jobs:
           mkdir -p output
           ls -lh src/background.mp4
           ls -lh src/logo.jpg
-          # FIXED: Changed overlay format from yuv420p to yuv420
+          # FIXED FILTER: Logo scale reduced from 1600 to 1000
           ffmpeg -y \
             -i src/background.mp4 \
             -i src/logo.jpg \
-            -filter_complex "[0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,setsar=1[bg];[1:v]scale=3200:-1:flags=lanczos[ov];[bg][ov]overlay=(W-w)/2:H-h-80:format=yuv420[out]" \
+            -filter_complex "[0:v]scale=2160:3840:force_original_aspect_ratio=increase,crop=2160:3840,setsar=1[bg];[1:v]colorkey=0xFFFFFF:0.1:0.1,scale=1000:-1:flags=lanczos[ov];[bg][ov]overlay=(W-w)/2:H-h-150:format=yuv420[out]" \
             -map "[out]" \
             -map 0:a? \
             -c:v libx264 -crf 18 -preset slow -profile:v high -pix_fmt yuv420p -movflags +faststart \
