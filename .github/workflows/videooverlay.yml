@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -25,18 +24,16 @@ jobs:
           mkdir -p output
           ls -lh src/background.mp4
           ls -lh src/logo.jpg
-
-          # FIXED FILTER - Works on Ubuntu FFmpeg 6.1.1
+          # FIXED FILTER - Separated scale and crop filters with a comma
           ffmpeg -y \
             -i src/background.mp4 \
             -i src/logo.jpg \
-            -filter_complex "[0:v]scale=3840:2160:force_original_aspect_ratio=increase:crop=3840:2160,setsar=1[bg];[1:v]scale=3200:-1:flags=lanczos[ov];[bg][ov]overlay=(W-w)/2:H-h-80:format=yuv420p,format=yuv420p[out]" \
+            -filter_complex "[0:v]scale=3840:2160:force_original_aspect_ratio=increase,crop=3840:2160,setsar=1[bg];[1:v]scale=3200:-1:flags=lanczos[ov];[bg][ov]overlay=(W-w)/2:H-h-80:format=yuv420p[out]" \
             -map "[out]" \
             -map 0:a? \
             -c:v libx264 -crf 18 -preset slow -profile:v high -pix_fmt yuv420p -movflags +faststart \
             -c:a aac -b:a 192k -r 30 \
             output/output.mp4
-
           ls -lh output/output.mp4
           ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of default=noprint_wrappers=1 output/output.mp4
 
